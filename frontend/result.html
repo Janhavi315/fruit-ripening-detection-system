@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FruitSense — Analysis Report</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --clr-bg:       #0d1117;
+      --clr-surface:  #161b22;
+      --clr-surface2: #1c2333;
+      --clr-border:   #30363d;
+      --clr-text:     #e6edf3;
+      --clr-muted:    #8b949e;
+      --clr-green:    #3fb950;
+      --clr-orange:   #e3b341;
+      --clr-red:      #f85149;
+      --clr-blue:     #58a6ff;
+      --clr-peach:    #f78166;
+      --font-display: 'Syne', sans-serif;
+      --font-body:    'DM Sans', sans-serif;
+      --radius:       14px;
+      --radius-sm:    8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-body);
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      min-height: 100vh;
+    }
+
+    /* Gradient background effect */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 10% 10%, rgba(63,185,80,0.06), transparent),
+        radial-gradient(ellipse 60% 40% at 90% 90%, rgba(247,129,102,0.06), transparent);
+      pointer-events: none;
+    }
+
+    /* ─── Layout ────────────────────────────────────────────────────── */
+    .page-wrap { position: relative; z-index: 1; }
+
+    /* ─── Navbar ────────────────────────────────────────────────────── */
+    .topbar {
+      background: rgba(13,17,23,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--clr-border);
+      padding: 14px 0;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-inner {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.3rem;
+      background: linear-gradient(135deg, #3fb950, #e3b341);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-decoration: none;
+    }
+    .scan-id-badge {
+      background: rgba(88,166,255,0.1);
+      border: 1px solid rgba(88,166,255,0.25);
+      color: var(--clr-blue);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.76rem;
+      font-weight: 600;
+    }
+
+    /* ─── Section Header ────────────────────────────────────────────── */
+    .section-head {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--clr-muted);
+      margin-bottom: 14px;
+      border-left: 3px solid var(--clr-green);
+      padding-left: 10px;
+    }
+
+    /* ─── Cards ─────────────────────────────────────────────────────── */
+    .card-panel {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      height: 100%;
+      transition: border-color 0.2s ease;
+    }
+    .card-panel:hover { border-color: rgba(63,185,80,0.3); }
+    .card-panel.highlight {
+      border-color: rgba(63,185,80,0.35);
+      background: linear-gradient(135deg, rgba(63,185,80,0.04), var(--clr-surface));
+    }
+
+    /* ─── Fruit Title Block ─────────────────────────────────────────── */
+    .fruit-hero {
+      text-align: center;
+      padding: 40px 0 28px;
+    }
+    .fruit-emoji-big {
+      font-size: 5rem;
+      display: block;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 0 20px rgba(63,185,80,0.3));
+      animation: floatFruit 3s ease-in-out infinite;
+    }
+    @keyframes floatFruit {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .fruit-type-name {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .fruit-status-pill {
+      display: inline-block;
+      padding: 6px 20px;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .status-raw      { background: rgba(88,166,255,0.15); color: var(--clr-blue); border: 1px solid rgba(88,166,255,0.3); }
+    .status-semi     { background: rgba(227,179,65,0.15); color: var(--clr-orange); border: 1px solid rgba(227,179,65,0.3); }
+    .status-ripe     { background: rgba(63,185,80,0.15); color: var(--clr-green); border: 1px solid rgba(63,185,80,0.3); }
+    .status-overripe { background: rgba(248,81,73,0.15); color: var(--clr-red); border: 1px solid rgba(248,81,73,0.3); }
+
+    /* ─── Ripeness Meter ─────────────────────────────────────────────── */
+    .ripeness-meter-wrap { padding: 8px 0; }
+    .meter-label {
+      display: flex; justify-content: space-between;
+      font-size: 0.82rem; color: var(--clr-muted);
+      margin-bottom: 10px;
+    }
+    .meter-pct {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+    .meter-bar {
+      height: 12px;
+      background: var(--clr-surface2);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .meter-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #3fb950, #e3b341);
+      transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 0%;
+    }
+    .meter-fill.overripe { background: linear-gradient(90deg, #e3b341, #f85149); }
+
+    /* ─── Metric Tiles ───────────────────────────────────────────────── */
+    .metric-tile {
+      background: var(--clr-surface2);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      text-align: center;
+    }
+    .metric-value {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 800;
+      display: block;
+    }
+    .metric-label {
+      font-size: 0.73rem;
+      color: var(--clr-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ─── Image Panels ───────────────────────────────────────────────── */
+    .img-panel img {
+      width: 100%;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--clr-border);
+      object-fit: contain;
+      max-height: 260px;
+      background: var(--clr-surface2);
+    }
+    .img-label {
+      font-size: 0.75rem;
+      color: var(--clr-muted);
+      text-align: center;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    /* ─── Alert Notifications ────────────────────────────────────────── */
+    .alert-item {
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border-left: 3px solid;
+      animation: slideAlert 0.4s ease both;
+    }
+    @keyframes slideAlert {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .alert-danger  { background: rgba(248,81,73,0.08);  border-color: var(--clr-red);    color: var(--clr-text); }
+    .alert-warning { background: rgba(227,179,65,0.08); border-color: var(--clr-orange); color: var(--clr-text); }
+    .alert-success { background: rgba(63,185,80,0.08);  border-color: var(--clr-green);  color: var(--clr-text); }
+    .alert-info    { background: rgba(88,166,255,0.08); border-color: var(--clr-blue);   color: var(--clr-text); }
+    .alert-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .alert-title { font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; }
+    .alert-msg { font-size: 0.82rem; color: var(--clr-muted); margin-top: 2px; }
+    .alert-action { font-size: 0.8rem; margin-top: 4px; font-weight: 500; }
+
+    /* ─── Disease Status ─────────────────────────────────────────────── */
+    .disease-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+    }
+    .disease-none   { background: rgba(63,185,80,0.12); color: var(--clr-green); border: 1px solid rgba(63,185,80,0.3); }
+    .disease-mild   { background: rgba(227,179,65,0.12); color: var(--clr-orange); border: 1px solid rgba(227,179,65,0.3); }
+    .disease-mod    { background: rgba(247,129,102,0.12); color: var(--clr-peach); border: 1px solid rgba(247,129,102,0.3); }
+    .disease-severe { background: rgba(248,81,73,0.12); color: var(--clr-red); border: 1px solid rgba(248,81,73,0.3); }
+
+    /* ─── Info List ──────────────────────────────────────────────────── */
+    .info-list { list-style: none; padding: 0; }
+    .info-list li {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--clr-border);
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .info-list li:last-child { border-bottom: none; }
+    .info-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+    /* ─── Color Distribution ─────────────────────────────────────────── */
+    .color-dist {
+      display: flex;
+      height: 10px;
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .cdist-raw  { background: var(--clr-blue); }
+    .cdist-semi { background: var(--clr-orange); }
+    .cdist-ripe { background: var(--clr-green); }
+    .cdist-legend {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      font-size: 0.76rem; color: var(--clr-muted);
+    }
+    .cdist-legend span { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+    /* ─── Chart Container ────────────────────────────────────────────── */
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* ─── Confidence Bar ─────────────────────────────────────────────── */
+    .conf-bar-wrap { margin-top: 12px; }
+    .conf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .conf-label { width: 70px; font-size: 0.78rem; color: var(--clr-muted); }
+    .conf-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--clr-surface2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .conf-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+    .conf-val { font-size: 0.78rem; font-weight: 600; width: 38px; text-align: right; }
+
+    /* ─── New Scan CTA ───────────────────────────────────────────────── */
+    .btn-new-scan {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, #3fb950, #2ea043);
+      color: #fff; text-decoration: none;
+      font-family: var(--font-display);
+      font-weight: 700;
+      padding: 12px 28px;
+      border-radius: var(--radius-sm);
+      transition: all 0.25s ease;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-new-scan:hover {
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(63,185,80,0.3);
+    }
+
+    /* ─── Fun Fact Box ───────────────────────────────────────────────── */
+    .fun-fact {
+      background: rgba(88,166,255,0.05);
+      border: 1px solid rgba(88,166,255,0.2);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      font-size: 0.85rem;
+      color: var(--clr-muted);
+      font-style: italic;
+      margin-top: 14px;
+    }
+    .fun-fact strong { color: var(--clr-blue); font-style: normal; }
+
+    /* ─── Responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 767px) {
+      .fruit-emoji-big { font-size: 3.5rem; }
+      .fruit-type-name { font-size: 1.6rem; }
+      .meter-pct { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="brand">🍎 FruitSense</a>
+      <div class="d-flex align-items-center gap-3">
+        <span class="scan-id-badge">Scan #<span id="scanId">—</span></span>
+        <a href="/" class="btn-new-scan" style="padding: 8px 18px; font-size: 0.82rem;">
+          ← New Scan
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── No Result State ── -->
+  <div id="no-result" class="text-center" style="padding: 80px 20px;">
+    <div style="font-size: 3rem; margin-bottom: 16px;">🔍</div>
+    <h2 style="font-family: var(--font-display); margin-bottom: 12px;">No Analysis Found</h2>
+    <p style="color: var(--clr-muted); margin-bottom: 24px;">Please upload a fruit image first to see results.</p>
+    <a href="/" class="btn-new-scan">Upload Fruit Image</a>
+  </div>
+
+  <!-- ── Main Dashboard ── -->
+  <div id="dashboard" style="display:none;">
+  <div class="container py-4">
+
+    <!-- Row 1: Fruit Hero + Images -->
+    <div class="row g-3 mb-3">
+
+      <!-- Fruit Identity Card -->
+      <div class="col-lg-3 col-md-6">
+        <div class="card-panel highlight text-center">
+          <div class="section-head">Detected Fruit</div>
+          <div class="fruit-hero" style="padding: 20px 0 14px;">
+            <span class="fruit-emoji-big" id="fruitEmoji">🍎</span>
+            <div class="fruit-type-name" id="fruitName">—</div>
+            <div class="fruit-status-pill" id="ripenessStatus">—</div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <div class="metric-tile">
+                <span class="metric-value" id="confidenceVal" style="color: var(--clr-blue);">—</span>
+                <span class="metric-label">Confidence</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="metric-tile">
+                <span class="metric-value" id="daysToRipe" style="color: var(--clr-orange);">—</span>
+                <span class="metric-label">Days to Peak</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ripeness Meter -->
+      <div class="col-lg-3 col-md-6">
+        <div class="card-panel">
+          <div class="section-head">Ripeness Analysis</div>
+          <div class="ripeness-meter-wrap">
+            <div class="meter-pct">
+              <span id="ripePct">0</span><span style="font-size:1.2rem; color: var(--clr-muted);">%</span>
+            </div>
+            <div class="meter-label">
+              <span>Raw</span><span>Semi</span><span>Ripe</span><span>Over</span>
+            </div>
+            <div class="meter-bar">
+              <div class="meter-fill" id="meterFill"></div>
+            </div>
+          </div>
+
+          <!-- Color Distribution -->
+          <div style="margin-top: 20px;">
+            <div style="font-size: 0.78rem; color: var(--clr-muted); margin-bottom: 6px;">Pixel Color Distribution</div>
+            <div class="color-dist" id="colorDist"></div>
+            <div class="cdist-legend">
+              <span><span class="legend-dot" style="background: var(--clr-blue);"></span>Raw <span id="rawPct">—</span>%</span>
+              <span><span class="legend-dot" style="background: var(--clr-orange);"></span>Semi <span id="semiPct">—</span>%</span>
+              <span><span class="legend-dot" style="background: var(--clr-green);"></span>Ripe <span id="ripePctDist">—</span>%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Original Image -->
+      <div class="col-lg-3 col-md-6">
+        <div class="card-panel">
+          <div class="section-head">Uploaded Image</div>
+          <div class="img-panel">
+            <img id="originalImg" src="" alt="Original Fruit" />
+            <div class="img-label">Original Scan</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Annotated Image -->
+      <div class="col-lg-3 col-md-6">
+        <div class="card-panel">
+          <div class="section-head">Disease Analysis</div>
+          <div class="img-panel">
+            <img id="annotatedImg" src="" alt="Disease Annotated" />
+            <div class="img-label">Disease Spots Highlighted in Red</div>
+          </div>
+          <div class="text-center mt-3">
+            <div class="disease-badge" id="diseaseBadge">—</div>
+            <div style="font-size:0.78rem; color: var(--clr-muted); margin-top: 6px;">
+              Area: <span id="diseaseAreaPct">—</span>% &nbsp;|&nbsp; Spots: <span id="spotsCount">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Charts + Alerts + Recommendations -->
+    <div class="row g-3 mb-3">
+
+      <!-- Growth Timeline Chart -->
+      <div class="col-lg-5">
+        <div class="card-panel">
+          <div class="section-head">Ripeness Growth Timeline</div>
+          <div class="chart-wrap">
+            <canvas id="timelineChart"></canvas>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--clr-muted); margin-top: 10px; text-align: center;">
+            Day 0 = Today · Dotted line = Peak Market Stage (71%)
+          </div>
+        </div>
+      </div>
+
+      <!-- Fruit Confidence Breakdown -->
+      <div class="col-lg-3">
+        <div class="card-panel">
+          <div class="section-head">Color Score Breakdown</div>
+          <div class="chart-wrap" style="height: 180px;">
+            <canvas id="colorScoreChart"></canvas>
+          </div>
+          <div class="conf-bar-wrap mt-3" id="confBars"></div>
+        </div>
+      </div>
+
+      <!-- Alert Notifications -->
+      <div class="col-lg-4">
+        <div class="card-panel">
+          <div class="section-head">Alert Notifications</div>
+          <div id="alertsContainer">
+            <div style="color: var(--clr-muted); font-size: 0.85rem;">No alerts to display.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Storage + Market + Shape + Fun Fact -->
+    <div class="row g-3 mb-3">
+
+      <!-- Storage Recommendation -->
+      <div class="col-lg-4">
+        <div class="card-panel">
+          <div class="section-head">📦 Storage Method</div>
+          <ul class="info-list">
+            <li>
+              <span class="info-icon">🌡️</span>
+              <span><strong>Ideal Temp:</strong> <span id="idealTemp">—</span></span>
+            </li>
+            <li>
+              <span class="info-icon">⏳</span>
+              <span><strong>Shelf Life:</strong> <span id="shelfLife">—</span></span>
+            </li>
+            <li>
+              <span class="info-icon">💡</span>
+              <span id="storageTip">Loading storage recommendation...</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Market Stage Recommendation -->
+      <div class="col-lg-4">
+        <div class="card-panel">
+          <div class="section-head">🏪 Market Selling Stage</div>
+          <ul class="info-list">
+            <li>
+              <span class="info-icon">📊</span>
+              <span><strong>Ripeness:</strong> <span id="marketRipeness">—</span></span>
+            </li>
+            <li>
+              <span class="info-icon">🎯</span>
+              <span id="marketTip">Loading market recommendation...</span>
+            </li>
+            <li id="diseaseActionRow">
+              <span class="info-icon">🦠</span>
+              <span id="diseaseAction">—</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Technical Details -->
+      <div class="col-lg-4">
+        <div class="card-panel">
+          <div class="section-head">🔬 Technical Details</div>
+          <ul class="info-list">
+            <li>
+              <span class="info-icon">🎨</span>
+              <span><strong>Dominant Hue:</strong> <span id="domHue">—</span>°</span>
+            </li>
+            <li>
+              <span class="info-icon">⭕</span>
+              <span><strong>Shape Roundness:</strong> <span id="roundness">—</span></span>
+            </li>
+            <li>
+              <span class="info-icon">📐</span>
+              <span><strong>Aspect Ratio:</strong> <span id="aspectRatio">—</span></span>
+            </li>
+            <li>
+              <span class="info-icon">🖼️</span>
+              <span><strong>Image Brightness:</strong> <span id="brightness">—</span></span>
+            </li>
+          </ul>
+
+          <!-- Fun Fact -->
+          <div class="fun-fact" id="funFact">
+            <strong>Did you know?</strong> Loading...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan Again CTA -->
+    <div class="text-center py-4">
+      <a href="/" class="btn-new-scan">🔄 Scan Another Fruit</a>
+      <div style="color: var(--clr-muted); font-size: 0.78rem; margin-top: 10px;">
+        Scan ID: #<span id="scanIdBottom">—</span> · <span id="scanTime">—</span>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+  </div><!-- /dashboard -->
+
+</div><!-- /page-wrap -->
+
+<script>
+/* ─── Load Result Data & Populate Dashboard ─────────────────────────── */
+
+const FRUIT_EMOJIS = { Mango: '🥭', Banana: '🍌', Apple: '🍎', Unknown: '🍋' };
+const STATUS_CLASSES = {
+  'Raw': 'status-raw',
+  'Semi Ripe': 'status-semi',
+  'Fully Ripe': 'status-ripe',
+  'Overripe': 'status-overripe'
+};
+const DISEASE_CLASSES = {
+  'None': 'disease-none',
+  'Mild': 'disease-mild',
+  'Moderate': 'disease-mod',
+  'Severe': 'disease-severe'
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const raw = sessionStorage.getItem('fruitResult');
+
+  if (!raw) {
+    document.getElementById('no-result').style.display = 'block';
+    return;
+  }
+
+  const data = JSON.parse(raw);
+  document.getElementById('dashboard').style.display = 'block';
+  populateDashboard(data);
+});
+
+function populateDashboard(d) {
+  const { fruit, ripeness, disease, recommendations, alerts } = d;
+
+  // ── Scan Info ─────────────────────────────────────────────────────────
+  document.getElementById('scanId').textContent       = d.scan_id || '—';
+  document.getElementById('scanIdBottom').textContent = d.scan_id || '—';
+  document.getElementById('scanTime').textContent     = new Date(d.timestamp).toLocaleString();
+
+  // ── Fruit Identity ────────────────────────────────────────────────────
+  const emoji = FRUIT_EMOJIS[fruit.type] || '🍋';
+  document.getElementById('fruitEmoji').textContent    = emoji;
+  document.getElementById('fruitName').textContent     = fruit.type;
+  document.getElementById('confidenceVal').textContent = `${fruit.confidence}%`;
+
+  const statusEl = document.getElementById('ripenessStatus');
+  statusEl.textContent  = ripeness.status;
+  statusEl.className    = `fruit-status-pill ${STATUS_CLASSES[ripeness.status] || 'status-raw'}`;
+
+  // ── Ripeness Meter ────────────────────────────────────────────────────
+  document.getElementById('ripePct').textContent = ripeness.percentage;
+
+  setTimeout(() => {
+    const fill = document.getElementById('meterFill');
+    fill.style.width = `${ripeness.percentage}%`;
+    if (ripeness.status === 'Overripe') fill.classList.add('overripe');
+  }, 200);
+
+  const daysEl = document.getElementById('daysToRipe');
+  daysEl.textContent = ripeness.days_to_ripe <= 0
+    ? '✓ Ready' : `${ripeness.days_to_ripe}d`;
+
+  // ── Color Distribution ────────────────────────────────────────────────
+  const cd = ripeness.color_distribution;
+  document.getElementById('rawPct').textContent      = cd.raw;
+  document.getElementById('semiPct').textContent     = cd.semi_ripe;
+  document.getElementById('ripePctDist').textContent = cd.ripe;
+  document.getElementById('colorDist').innerHTML = `
+    <div class="cdist-raw"  style="width: ${cd.raw}%"></div>
+    <div class="cdist-semi" style="width: ${cd.semi_ripe}%"></div>
+    <div class="cdist-ripe" style="width: ${cd.ripe}%"></div>`;
+
+  // ── Images ────────────────────────────────────────────────────────────
+  document.getElementById('originalImg').src  = d.images.original;
+  document.getElementById('annotatedImg').src = d.images.annotated;
+
+  // ── Disease ───────────────────────────────────────────────────────────
+  const diseaseBadge = document.getElementById('diseaseBadge');
+  diseaseBadge.textContent = disease.detected
+    ? `🦠 ${disease.severity} Disease`
+    : '✅ No Disease';
+  diseaseBadge.className = `disease-badge ${DISEASE_CLASSES[disease.severity] || 'disease-none'}`;
+  document.getElementById('diseaseAreaPct').textContent = disease.area_percentage.toFixed(1);
+  document.getElementById('spotsCount').textContent     = disease.spots_count;
+
+  // ── Recommendations ───────────────────────────────────────────────────
+  document.getElementById('storageTip').textContent    = recommendations.storage;
+  document.getElementById('marketTip').textContent     = recommendations.market_stage;
+  document.getElementById('idealTemp').textContent     = recommendations.ideal_temp;
+  document.getElementById('shelfLife').textContent     = recommendations.shelf_life;
+  document.getElementById('marketRipeness').textContent = `${ripeness.percentage}% — ${ripeness.status}`;
+  document.getElementById('diseaseAction').textContent  = recommendations.disease_action?.action || '—';
+  document.getElementById('funFact').innerHTML = `<strong>Did you know?</strong> ${recommendations.fun_fact || ''}`;
+
+  // ── Technical Details ─────────────────────────────────────────────────
+  document.getElementById('domHue').textContent      = ripeness.dominant_hue !== undefined ? ripeness.dominant_hue : '—';
+  document.getElementById('roundness').textContent   = fruit.shape?.roundness ?? '—';
+  document.getElementById('aspectRatio').textContent = fruit.shape?.aspect_ratio ?? '—';
+  document.getElementById('brightness').textContent  = fruit.image_stats?.mean_brightness
+    ? `${fruit.image_stats.mean_brightness.toFixed(0)} / 255` : '—';
+
+  // ── Alerts ────────────────────────────────────────────────────────────
+  renderAlerts(alerts);
+
+  // ── Charts ────────────────────────────────────────────────────────────
+  renderTimelineChart(ripeness.growth_timeline, ripeness.percentage);
+  renderColorScoreChart(fruit.color_scores, fruit.type);
+  renderConfidenceBars(fruit.color_scores);
+}
+
+/* ─── Render Alerts ─────────────────────────────────────────────────── */
+function renderAlerts(alerts) {
+  const container = document.getElementById('alertsContainer');
+  if (!alerts || alerts.length === 0) return;
+
+  container.innerHTML = alerts.map((a, i) => `
+    <div class="alert-item alert-${a.level}" style="animation-delay: ${i * 0.1}s">
+      <div class="alert-icon">${a.icon}</div>
+      <div>
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-msg">${a.message}</div>
+        <div class="alert-action" style="color: var(--clr-${a.level === 'danger' ? 'red' : a.level === 'warning' ? 'orange' : a.level === 'success' ? 'green' : 'blue'})">
+          → ${a.action}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+/* ─── Growth Timeline Chart ─────────────────────────────────────────── */
+function renderTimelineChart(timeline, currentPct) {
+  if (!timeline || !timeline.length) return;
+
+  const labels  = timeline.map(t => t.day === 0 ? 'Today' : `Day ${t.day}`);
+  const values  = timeline.map(t => t.ripeness);
+  const bgColors = timeline.map(t => t.is_current
+    ? 'rgba(63,185,80,0.9)'
+    : 'rgba(63,185,80,0.25)');
+
+  new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Ripeness %',
+        data: values,
+        borderColor: '#3fb950',
+        backgroundColor: 'rgba(63,185,80,0.08)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: bgColors,
+        pointRadius: timeline.map(t => t.is_current ? 8 : 4),
+        pointBorderColor: '#3fb950',
+        pointBorderWidth: 2
+      }, {
+        label: 'Market Threshold (71%)',
+        data: timeline.map(() => 71),
+        borderColor: 'rgba(227,179,65,0.6)',
+        borderWidth: 1.5,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1c2333',
+          borderColor: '#30363d',
+          borderWidth: 1,
+          titleColor: '#e6edf3',
+          bodyColor: '#8b949e'
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(48,54,61,0.5)' },
+          ticks: { color: '#8b949e', font: { size: 11 } }
+        },
+        y: {
+          min: 0, max: 105,
+          grid: { color: 'rgba(48,54,61,0.5)' },
+          ticks: {
+            color: '#8b949e',
+            font: { size: 11 },
+            callback: v => `${v}%`
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ─── Color Score Doughnut Chart ─────────────────────────────────────── */
+function renderColorScoreChart(colorScores, detectedFruit) {
+  if (!colorScores) return;
+
+  const fruits = Object.keys(colorScores);
+  const values = Object.values(colorScores);
+  const colors = {
+    'Mango':   '#e3b341',
+    'Banana':  '#f0e130',
+    'Apple':   '#f85149',
+    'Unknown': '#8b949e'
+  };
+
+  new Chart(document.getElementById('colorScoreChart'), {
+    type: 'doughnut',
+    data: {
+      labels: fruits,
+      datasets: [{
+        data: values,
+        backgroundColor: fruits.map(f => `${colors[f] || '#8b949e'}88`),
+        borderColor: fruits.map(f => colors[f] || '#8b949e'),
+        borderWidth: 2,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#8b949e',
+            font: { size: 11 },
+            boxWidth: 10,
+            padding: 12
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1c2333',
+          borderColor: '#30363d',
+          borderWidth: 1,
+          titleColor: '#e6edf3',
+          bodyColor: '#8b949e',
+          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toFixed(1)}% match` }
+        }
+      }
+    }
+  });
+}
+
+/* ─── Confidence Bars ────────────────────────────────────────────────── */
+function renderConfidenceBars(colorScores) {
+  if (!colorScores) return;
+  const colors = { 'Mango': '#e3b341', 'Banana': '#f0e130', 'Apple': '#f85149' };
+  const container = document.getElementById('confBars');
+
+  container.innerHTML = Object.entries(colorScores).map(([fruit, score]) => `
+    <div class="conf-row">
+      <div class="conf-label">${fruit}</div>
+      <div class="conf-bar">
+        <div class="conf-fill" style="width: ${Math.min(score * 3, 100)}%; background: ${colors[fruit] || '#8b949e'};"></div>
+      </div>
+      <div class="conf-val" style="color: ${colors[fruit] || '#8b949e'}">${score}%</div>
+    </div>`).join('');
+}
+</script>
+
+</body>
+</html>

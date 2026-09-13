@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FruitSense AI — Smart Ripeness Detection</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Google Fonts: Syne (display) + DM Sans (body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── CSS Variables ────────────────────────────────────────────────── */
+    :root {
+      --clr-bg:         #0d1117;
+      --clr-surface:    #161b22;
+      --clr-surface2:   #1c2333;
+      --clr-border:     #30363d;
+      --clr-text:       #e6edf3;
+      --clr-muted:      #8b949e;
+      --clr-accent:     #3fb950;
+      --clr-accent2:    #f78166;
+      --clr-gold:       #e3b341;
+      --clr-cyan:       #58a6ff;
+      --font-display:   'Syne', sans-serif;
+      --font-body:      'DM Sans', sans-serif;
+      --radius:         14px;
+      --radius-sm:      8px;
+    }
+
+    /* ─── Base ────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Animated Background Grid ────────────────────────────────────── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(63,185,80,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(63,185,80,0.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+      animation: gridShift 20s linear infinite;
+    }
+    @keyframes gridShift {
+      0%   { background-position: 0 0; }
+      100% { background-position: 44px 44px; }
+    }
+
+    /* ─── Glow Orbs ───────────────────────────────────────────────────── */
+    .orb {
+      position: fixed; border-radius: 50%; filter: blur(80px);
+      pointer-events: none; z-index: 0; opacity: 0.18;
+    }
+    .orb-1 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #3fb950, transparent);
+      top: -150px; left: -100px;
+      animation: floatOrb 12s ease-in-out infinite;
+    }
+    .orb-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #f78166, transparent);
+      bottom: -100px; right: -80px;
+      animation: floatOrb 15s ease-in-out infinite reverse;
+    }
+    .orb-3 {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, #e3b341, transparent);
+      top: 40%; left: 60%;
+      animation: floatOrb 18s ease-in-out infinite;
+    }
+    @keyframes floatOrb {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%  { transform: translate(30px, -20px) scale(1.05); }
+      66%  { transform: translate(-20px, 30px) scale(0.95); }
+    }
+
+    /* ─── Content Layer ───────────────────────────────────────────────── */
+    .content { position: relative; z-index: 1; }
+
+    /* ─── Navbar ──────────────────────────────────────────────────────── */
+    .navbar-brand-text {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, #3fb950, #e3b341);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-pill {
+      background: rgba(63,185,80,0.1);
+      border: 1px solid rgba(63,185,80,0.3);
+      color: var(--clr-accent);
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* ─── Hero Section ────────────────────────────────────────────────── */
+    .hero { padding: 80px 0 60px; text-align: center; }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(63,185,80,0.08);
+      border: 1px solid rgba(63,185,80,0.25);
+      border-radius: 30px;
+      padding: 8px 20px;
+      font-size: 0.8rem;
+      color: var(--clr-accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 28px;
+      animation: fadeDown 0.6s ease both;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--clr-accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      animation: fadeDown 0.7s 0.1s ease both;
+    }
+    .hero-title .line2 {
+      background: linear-gradient(135deg, #3fb950 0%, #e3b341 50%, #f78166 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--clr-muted);
+      max-width: 560px;
+      margin: 0 auto 50px;
+      line-height: 1.7;
+      animation: fadeDown 0.8s 0.2s ease both;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Stats Row ───────────────────────────────────────────────────── */
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-bottom: 60px;
+      flex-wrap: wrap;
+      animation: fadeDown 0.9s 0.3s ease both;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 1.9rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #3fb950, #e3b341);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--clr-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ─── Upload Card ─────────────────────────────────────────────────── */
+    .upload-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 660px;
+      margin: 0 auto;
+      animation: fadeUp 0.9s 0.4s ease both;
+      position: relative;
+      overflow: hidden;
+    }
+    .upload-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #3fb950, #e3b341, #f78166);
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Drop Zone ───────────────────────────────────────────────────── */
+    .drop-zone {
+      border: 2px dashed var(--clr-border);
+      border-radius: var(--radius);
+      padding: 50px 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      background: rgba(255,255,255,0.01);
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--clr-accent);
+      background: rgba(63,185,80,0.04);
+      transform: scale(1.01);
+    }
+
+    .drop-icon {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, rgba(63,185,80,0.15), rgba(227,179,65,0.1));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 20px;
+      border: 1px solid rgba(63,185,80,0.2);
+      transition: transform 0.3s ease;
+    }
+    .drop-zone:hover .drop-icon { transform: scale(1.1) rotate(5deg); }
+
+    .drop-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .drop-sub { font-size: 0.85rem; color: var(--clr-muted); }
+
+    #fileInput { display: none; }
+
+    /* ─── Preview ─────────────────────────────────────────────────────── */
+    #preview-area { display: none; }
+    #preview-img {
+      max-width: 100%; max-height: 280px;
+      border-radius: var(--radius-sm);
+      object-fit: contain;
+      border: 1px solid var(--clr-border);
+    }
+
+    /* ─── Fruit Type Badges ───────────────────────────────────────────── */
+    .fruit-tags {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 28px;
+    }
+    .fruit-tag {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid;
+      transition: all 0.2s ease;
+    }
+    .fruit-tag.mango { color: #e3b341; border-color: rgba(227,179,65,0.35); background: rgba(227,179,65,0.06); }
+    .fruit-tag.banana { color: #f0e130; border-color: rgba(240,225,48,0.35); background: rgba(240,225,48,0.06); }
+    .fruit-tag.apple { color: #f78166; border-color: rgba(247,129,102,0.35); background: rgba(247,129,102,0.06); }
+
+    /* ─── Analyze Button ──────────────────────────────────────────────── */
+    .btn-analyze {
+      background: linear-gradient(135deg, #3fb950, #2ea043);
+      border: none;
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 14px 36px;
+      border-radius: var(--radius-sm);
+      width: 100%;
+      margin-top: 24px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-analyze::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .btn-analyze:hover::after { opacity: 1; }
+    .btn-analyze:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(63,185,80,0.35); }
+    .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ─── Loading State ───────────────────────────────────────────────── */
+    #loading-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(13,17,23,0.85);
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(6px);
+    }
+    #loading-overlay.active { display: flex; }
+
+    .loader-ring {
+      width: 80px; height: 80px;
+      border: 3px solid var(--clr-border);
+      border-top-color: var(--clr-accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin-bottom: 28px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loader-text {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--clr-text);
+      margin-bottom: 8px;
+    }
+    .loader-sub { color: var(--clr-muted); font-size: 0.85rem; }
+
+    .loader-steps {
+      display: flex; gap: 8px;
+      margin-top: 24px;
+    }
+    .lstep {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--clr-border);
+      transition: background 0.3s ease;
+    }
+    .lstep.active { background: var(--clr-accent); }
+
+    /* ─── Feature Cards ───────────────────────────────────────────────── */
+    .features { padding: 60px 0 80px; }
+    .feature-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      height: 100%;
+      transition: all 0.25s ease;
+    }
+    .feature-card:hover {
+      border-color: rgba(63,185,80,0.4);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+    }
+    .feature-icon {
+      font-size: 1.8rem;
+      margin-bottom: 14px;
+      display: block;
+    }
+    .feature-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+    .feature-desc { color: var(--clr-muted); font-size: 0.875rem; line-height: 1.6; }
+
+    /* ─── Footer ──────────────────────────────────────────────────────── */
+    .footer {
+      border-top: 1px solid var(--clr-border);
+      padding: 24px 0;
+      text-align: center;
+      color: var(--clr-muted);
+      font-size: 0.82rem;
+    }
+
+    /* ─── Error Toast ─────────────────────────────────────────────────── */
+    #error-toast {
+      position: fixed;
+      bottom: 30px; right: 30px;
+      background: #2d1b1b;
+      border: 1px solid #f78166;
+      color: #f78166;
+      padding: 14px 20px;
+      border-radius: var(--radius-sm);
+      max-width: 360px;
+      z-index: 9999;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+
+    .sample-btn {
+      background: var(--clr-surface2);
+      border: 1px solid var(--clr-border);
+      color: var(--clr-text);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: var(--font-body);
+    }
+    .sample-btn:hover {
+      border-color: var(--clr-accent);
+      color: var(--clr-accent);
+      background: rgba(63,185,80,0.06);
+    }
+    /* ─── Responsive tweaks ───────────────────────────────────────────── */
+    @media (max-width: 576px) {
+      .hero { padding: 60px 0 40px; }
+      .upload-card { padding: 28px 20px; }
+      .stats-row { gap: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Background Effects -->
+<div class="bg-grid"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay">
+  <div class="loader-ring"></div>
+  <div class="loader-text" id="loader-title">Analyzing Fruit...</div>
+  <div class="loader-sub" id="loader-sub">Running computer vision pipeline</div>
+  <div class="loader-steps">
+    <div class="lstep active" id="s1"></div>
+    <div class="lstep" id="s2"></div>
+    <div class="lstep" id="s3"></div>
+    <div class="lstep" id="s4"></div>
+  </div>
+</div>
+
+<!-- Error Toast -->
+<div id="error-toast">
+  <strong>⚠️ Error</strong><br>
+  <span id="error-msg">Something went wrong.</span>
+</div>
+
+<!-- ─── Navbar ─────────────────────────────────────────────────────────── -->
+<nav class="navbar navbar-dark py-3" style="background:rgba(13,17,23,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--clr-border); position: sticky; top:0; z-index: 100;">
+  <div class="container d-flex align-items-center justify-content-between">
+    <span class="navbar-brand-text">🍎 FruitSense</span>
+    <div class="d-flex align-items-center gap-3">
+      <span class="nav-pill">Traditional CV</span>
+      <a href="/api/health" target="_blank" style="color: var(--clr-muted); text-decoration:none; font-size:0.85rem;">API Status</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ─── Main Content ───────────────────────────────────────────────────── -->
+<div class="content">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <div class="dot"></div>
+        OpenCV · Color Analysis · HSV Detection
+      </div>
+
+      <h1 class="hero-title">
+        Know Your Fruit's<br>
+        <span class="line2">Ripeness Instantly</span>
+      </h1>
+
+      <p class="hero-sub">
+        Upload a photo of your Mango, Banana, or Apple — our traditional computer vision
+        system will assess ripeness, detect disease, and give you market-ready insights.
+      </p>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-num">3</div>
+          <div class="stat-label">Fruit Types</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">7</div>
+          <div class="stat-label">Analysis Points</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">0%</div>
+          <div class="stat-label">ML / Deep Learning</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">∞</div>
+          <div class="stat-label">Potential Scans</div>
+        </div>
+      </div>
+
+      <!-- Upload Card -->
+      <div class="upload-card">
+        <form id="uploadForm" enctype="multipart/form-data">
+
+          <!-- Drop Zone -->
+          <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <div class="drop-icon" id="dropIcon">🍋</div>
+            <div class="drop-title">Drop fruit image here</div>
+            <div class="drop-sub">or click to browse · PNG, JPG, JPEG, WEBP supported</div>
+            <input type="file" id="fileInput" name="image" accept="image/*" />
+          </div>
+
+          <!-- Image Preview -->
+          <div id="preview-area" class="mt-3 text-center">
+            <img id="preview-img" src="" alt="Preview" />
+            <div class="mt-2" style="color: var(--clr-muted); font-size: 0.82rem;" id="file-info"></div>
+          </div>
+
+          <!-- Supported Fruit Tags -->
+          <div class="fruit-tags">
+            <span class="fruit-tag mango">🥭 Mango</span>
+            <span class="fruit-tag banana">🍌 Banana</span>
+            <span class="fruit-tag apple">🍎 Apple</span>
+          </div>
+
+          <!-- Analyze Button -->
+          <button type="submit" class="btn-analyze" id="analyzeBtn" disabled>
+            🔬 Analyze Fruit
+          </button>
+
+        </form>
+      </div>
+    </div>
+  </section>
+
+
+      <!-- Sample Images Quick-Try -->
+      <div style="max-width:660px; margin: 24px auto 0; text-align:center;">
+        <div style="font-size:0.78rem; color: var(--clr-muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.08em; font-weight:600;">
+          Try with a sample image →
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap:wrap;">
+          <button class="sample-btn" onclick="loadSample('mango_raw','🥭','Raw Mango')">🥭 Raw Mango</button>
+          <button class="sample-btn" onclick="loadSample('mango_ripe','🥭','Ripe Mango')">🥭 Ripe Mango</button>
+          <button class="sample-btn" onclick="loadSample('banana_ripe','🍌','Banana')">🍌 Banana</button>
+          <button class="sample-btn" onclick="loadSample('apple','🍎','Apple')">🍎 Apple</button>
+          <button class="sample-btn" onclick="loadSample('diseased','⚠️','Diseased')">🦠 Diseased</button>
+        </div>
+      </div>
+
+  <!-- Feature Cards -->
+  <section class="features">
+    <div class="container">
+      <h2 style="font-family: var(--font-display); font-weight: 800; text-align: center; margin-bottom: 40px;">
+        What FruitSense Detects
+      </h2>
+      <div class="row g-3">
+        <div class="col-md-4 col-sm-6">
+          <div class="feature-card">
+            <span class="feature-icon">🍏</span>
+            <div class="feature-title">Fruit Identification</div>
+            <div class="feature-desc">HSV color range analysis identifies Mango, Banana, or Apple with confidence scoring.</div>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="feature-card">
+            <span class="feature-icon">📊</span>
+            <div class="feature-title">Ripeness Percentage</div>
+            <div class="feature-desc">Pixel-by-pixel color analysis gives exact ripeness score. Raw → Semi → Fully Ripe → Overripe.</div>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="feature-card">
+            <span class="feature-icon">⏱️</span>
+            <div class="feature-title">Time to Market</div>
+            <div class="feature-desc">Formula-based prediction estimates exact days until the fruit reaches peak market quality.</div>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="feature-card">
+            <span class="feature-icon">🦠</span>
+            <div class="feature-title">Disease Detection</div>
+            <div class="feature-desc">Dark patch analysis with contour detection identifies bruises, rot, or fungal spots automatically.</div>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="feature-card">
+            <span class="feature-icon">📦</span>
+            <div class="feature-title">Storage Guidance</div>
+            <div class="feature-desc">Fruit-specific storage recommendations with temperature and shelf-life information from our knowledge base.</div>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="feature-card">
+            <span class="feature-icon">📈</span>
+            <div class="feature-title">Growth Timeline Chart</div>
+            <div class="feature-desc">Visual ripeness progression graph showing past trajectory and future prediction using Chart.js.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    FruitSense AI · Built with OpenCV, Flask &amp; Traditional Computer Vision · No ML/DL Used
+  </div>
+</footer>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* ─── Upload & Analysis Logic ──────────────────────────────────────── */
+
+const fileInput  = document.getElementById('fileInput');
+const dropZone   = document.getElementById('dropZone');
+const previewArea = document.getElementById('preview-area');
+const previewImg  = document.getElementById('preview-img');
+const fileInfo   = document.getElementById('file-info');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const dropIcon   = document.getElementById('dropIcon');
+const uploadForm = document.getElementById('uploadForm');
+
+// Fruit emoji mapping for drop zone feedback
+const fruitEmojis = ['🍋', '🥭', '🍌', '🍎', '🍊', '🍇'];
+let emojiIdx = 0;
+setInterval(() => {
+  dropIcon.textContent = fruitEmojis[emojiIdx % fruitEmojis.length];
+  emojiIdx++;
+}, 2000);
+
+/* ── File Selection ──────────────────────────────────────────────── */
+fileInput.addEventListener('change', handleFile);
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    previewImg.src = ev.target.result;
+    previewArea.style.display = 'block';
+    fileInfo.textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
+    analyzeBtn.disabled = false;
+    dropZone.style.borderColor = 'var(--clr-accent)';
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── Drag & Drop ─────────────────────────────────────────────────── */
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) {
+    fileInput.files = e.dataTransfer.files;
+    handleFile({ target: fileInput });
+  }
+});
+
+/* ── Analysis Loading Steps ──────────────────────────────────────── */
+const loaderSteps = [
+  { title: 'Classifying Fruit Type...', sub: 'Running HSV color range analysis' },
+  { title: 'Calculating Ripeness...', sub: 'Counting ripe color pixels' },
+  { title: 'Detecting Disease...', sub: 'Scanning for dark patches & bruises' },
+  { title: 'Building Report...', sub: 'Fetching market & storage recommendations' }
+];
+
+function startLoaderAnimation() {
+  const overlay = document.getElementById('loading-overlay');
+  const title = document.getElementById('loader-title');
+  const sub = document.getElementById('loader-sub');
+  overlay.classList.add('active');
+
+  let step = 0;
+  const steps = [1,2,3,4].map(i => document.getElementById(`s${i}`));
+
+  // Reset
+  steps.forEach(s => s.classList.remove('active'));
+  steps[0].classList.add('active');
+
+  const interval = setInterval(() => {
+    if (step < loaderSteps.length) {
+      title.textContent = loaderSteps[step].title;
+      sub.textContent = loaderSteps[step].sub;
+      if (step < steps.length) {
+        steps.forEach((s, i) => s.classList.toggle('active', i <= step));
+      }
+      step++;
+    }
+  }, 900);
+
+  return interval;
+}
+
+/* ── Form Submit / API Call ──────────────────────────────────────── */
+uploadForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const file = fileInput.files[0];
+  if (!file) { showError('Please select an image first.'); return; }
+
+  const loaderTimer = startLoaderAnimation();
+  analyzeBtn.disabled = true;
+
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+    clearInterval(loaderTimer);
+
+    if (!response.ok || data.error) {
+      document.getElementById('loading-overlay').classList.remove('active');
+      showError(data.error || 'Analysis failed. Please try again.');
+      analyzeBtn.disabled = false;
+      return;
+    }
+
+    // Store result in sessionStorage and navigate to result page
+    sessionStorage.setItem('fruitResult', JSON.stringify(data));
+    window.location.href = '/result';
+
+  } catch (err) {
+    clearInterval(loaderTimer);
+    document.getElementById('loading-overlay').classList.remove('active');
+    showError('Connection error. Is the backend server running?');
+    analyzeBtn.disabled = false;
+  }
+});
+
+
+/* ── Load Sample Image ────────────────────────────────────────────── */
+async function loadSample(name, emoji, label) {
+  try {
+    const response = await fetch(`/static/sample_${name}.jpg`);
+    const blob = await response.blob();
+    const file = new File([blob], `sample_${name}.jpg`, { type: 'image/jpeg' });
+
+    // Inject into file input
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    handleFile({ target: fileInput });
+
+    // Visual feedback
+    dropIcon.textContent = emoji;
+    dropZone.style.borderColor = 'var(--clr-accent)';
+  } catch(e) {
+    showError('Could not load sample image. Please upload your own.');
+  }
+}
+
+/* ── Error Toast ──────────────────────────────────────────────────── */
+function showError(msg) {
+  const toast = document.getElementById('error-toast');
+  document.getElementById('error-msg').textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 5000);
+}
+</script>
+</body>
+</html>
